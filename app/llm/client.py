@@ -74,7 +74,7 @@ class OllamaClient(LLMClient):
             "model": self.model,
             "stream": False,
             "think": False,
-            "options": {"temperature": temperature, "num_ctx": 32768},
+            "options": {"temperature": temperature, "num_ctx": 32768, "num_predict": 8192},
             "messages": [
                 {"role": "system", "content": system or "You are a careful writing system assistant."},
                 {"role": "user", "content": prompt},

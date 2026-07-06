@@ -268,7 +268,14 @@ def generate_chapter_text(client: OllamaClient, context: str, title: str, target
         "必须遵守 Story Memory、上一章桥接、人物关系、伏笔和时间线。"
         "结尾必须落在具体事件、物件、账页、消息、来客或一句未说完的话上。"
     )
-    return product_generate_chapter(client, context, mode="generate_chapter", extra_instruction=extra, temperature=0.72)
+    return product_generate_chapter(
+        client,
+        context,
+        mode="generate_chapter",
+        extra_instruction=extra,
+        temperature=0.72,
+        target_chars=target_words,
+    )
 
 
 def run_rose_mansion_e2e(

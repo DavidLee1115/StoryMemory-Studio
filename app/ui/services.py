@@ -752,10 +752,28 @@ def build_context(project: str, chapter_number: int, goal: str, outline: str, ch
         return ContextBuilder(conn, p).build(req)
 
 
+def _infer_generation_target_chars(*texts: str) -> int | None:
+    import re
+
+    joined = "\n".join(text for text in texts if text)
+    match = re.search(r"(?:目标|约|不少于|至少)?\s*(\d{3,5})\s*(?:个)?(?:中文)?(?:字|字符)", joined)
+    if not match:
+        return None
+    value = int(match.group(1))
+    return value if 500 <= value <= 20000 else None
+
+
 def generate_with_context(provider: str, context: str, mode: str, extra_instruction: str = "", project: str | None = None) -> str:
     provider = resolve_auto_provider(provider)
     client = get_llm(provider if provider != "default" else None)
-    result = llm_generate_chapter(client, context, mode=mode, extra_instruction=extra_instruction)
+    target_chars = _infer_generation_target_chars(extra_instruction, context)
+    result = llm_generate_chapter(
+        client,
+        context,
+        mode=mode,
+        extra_instruction=extra_instruction,
+        target_chars=target_chars,
+    )
     if project:
         style = default_style_profile(project)
         if style:
