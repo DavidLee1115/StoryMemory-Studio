@@ -2,10 +2,12 @@ import streamlit as st
 
 from app.ui.components.project_selector import project_selector
 from app.ui.components.result_panel import result_panel
+from app.ui.components.ui_batch_panel import render_batch_panel
 from app.ui.services import (
     available_provider_options,
     import_chapter_batch,
     import_chapter_text,
+    project_id_for_name,
     read_uploaded_text,
     split_chapters_from_text,
 )
@@ -83,3 +85,5 @@ else:
             results = import_chapter_batch(project, int(start_number), chapters, volume, provider)
         st.success(f"已导入 {len(results)} 章。")
         st.json(results[:5])
+
+render_batch_panel(project_id_for_name(project))

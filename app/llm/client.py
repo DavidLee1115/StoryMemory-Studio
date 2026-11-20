@@ -8,6 +8,9 @@ import httpx
 from app.config import get_settings
 
 
+DEFAULT_SYSTEM_PROMPT = "You are a careful writing system assistant."
+
+
 class LLMClient(ABC):
     provider: str
     model: str
@@ -41,7 +44,7 @@ class ChatCompletionsClient(LLMClient):
             "model": self.model,
             "temperature": temperature,
             "messages": [
-                {"role": "system", "content": system or "You are a careful writing system assistant."},
+                {"role": "system", "content": system or DEFAULT_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
         }
@@ -76,7 +79,7 @@ class OllamaClient(LLMClient):
             "think": False,
             "options": {"temperature": temperature, "num_ctx": 32768, "num_predict": 8192},
             "messages": [
-                {"role": "system", "content": system or "You are a careful writing system assistant."},
+                {"role": "system", "content": system or DEFAULT_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
         }
