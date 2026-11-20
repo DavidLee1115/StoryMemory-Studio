@@ -103,9 +103,6 @@ def prepare_runtime() -> tuple[Path, Path]:
     os.environ["STORYMEMORY_RESOURCE_DIR"] = str(resources)
     os.environ.setdefault("STORYMEMORY_DB_PATH", str(root / "data" / "storymemory.sqlite3"))
     os.environ.setdefault("STORYMEMORY_EXPORT_DIR", str(root / "exports"))
-    os.environ.setdefault("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-    os.environ.setdefault("DEFAULT_MODEL_PROVIDER", "ollama")
-    os.environ.setdefault("DEFAULT_OLLAMA_MODEL", "auto")
     sys.path.insert(0, str(resources))
     os.chdir(root)
     return root, resources
@@ -147,6 +144,9 @@ def main() -> None:
 
         env_path = ensure_env_file(root, resources)
         load_dotenv(env_path, override=False)
+        os.environ.setdefault("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+        os.environ.setdefault("DEFAULT_MODEL_PROVIDER", "ollama")
+        os.environ.setdefault("DEFAULT_OLLAMA_MODEL", "auto")
         initialize_database()
         write_log(f"Ollama 状态：{check_ollama()}")
 

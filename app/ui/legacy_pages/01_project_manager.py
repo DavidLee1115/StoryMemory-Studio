@@ -51,7 +51,7 @@ if project and current:
     c3.metric("目标平台", current.get("target_platform") or "未设置")
 
     with st.expander("危险操作", expanded=False):
-        st.warning("归档不会删除数据；删除会移除该项目及其章节、记忆和日志。建议先进入“备份与恢复”创建备份。")
+        st.warning("删除会移除该项目及其章节、记忆和日志，建议先备份本地数据库。归档会保留数据。")
         if st.button("归档当前项目"):
             archive_project(project)
             st.success("项目已归档。")

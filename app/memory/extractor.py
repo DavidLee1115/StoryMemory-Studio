@@ -5,9 +5,15 @@ from pathlib import Path
 
 from app.db.models import MemoryExtraction
 from app.llm.client import LLMClient, extract_json, repair_json_with_llm
+from app.prompts import render_prompt
 
 
 PROMPT_PATH = Path(__file__).parents[1] / "prompts" / "extract_memory.md"
+
+
+def build_extraction_prompt(title: str, content: str) -> str:
+    template = PROMPT_PATH.read_text(encoding="utf-8")
+    return render_prompt(template, chapter_title=title, chapter_content=content)
 
 
 def _clean_sentence(sentence: str) -> str:
@@ -115,8 +121,7 @@ class MemoryExtractor:
     def extract(self, title: str, content: str) -> MemoryExtraction:
         if self.client is None:
             return heuristic_extract(title, content)
-        template = PROMPT_PATH.read_text(encoding="utf-8")
-        prompt = template.format(chapter_title=title, chapter_content=content)
+        prompt = build_extraction_prompt(title, content)
         raw = self.client.complete(prompt, temperature=0.1)
         try:
             data = extract_json(raw)

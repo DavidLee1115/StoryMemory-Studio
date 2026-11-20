@@ -8,6 +8,9 @@ import httpx
 from app.config import get_settings
 
 
+DEFAULT_SYSTEM_PROMPT = "You are a careful writing system assistant."
+
+
 class LLMClient(ABC):
     provider: str
     model: str
@@ -29,6 +32,7 @@ class ChatCompletionsClient(LLMClient):
     ):
         self.provider = provider
         self.base_url = base_url.rstrip("/")
+        self._trust_env = httpx.URL(self.base_url).host not in {"localhost", "127.0.0.1", "::1"}
         self.api_key = api_key
         self.model = model
         self.extra_payload = extra_payload or {}
@@ -41,12 +45,12 @@ class ChatCompletionsClient(LLMClient):
             "model": self.model,
             "temperature": temperature,
             "messages": [
-                {"role": "system", "content": system or "You are a careful writing system assistant."},
+                {"role": "system", "content": system or DEFAULT_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
         }
         payload.update(self.extra_payload)
-        with httpx.Client(timeout=180) as client:
+        with httpx.Client(timeout=180, trust_env=self._trust_env) as client:
             endpoint = f"{self.base_url}/chat/completions"
             resp = client.post(endpoint, headers=headers, json=payload)
             resp.raise_for_status()
@@ -56,7 +60,7 @@ class ChatCompletionsClient(LLMClient):
         if not self.api_key:
             raise RuntimeError(f"{self.provider} API key is not configured")
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=30, trust_env=self._trust_env) as client:
             resp = client.get(f"{self.base_url}/models", headers=headers)
             resp.raise_for_status()
             data = resp.json().get("data", [])
@@ -76,7 +80,7 @@ class OllamaClient(LLMClient):
             "think": False,
             "options": {"temperature": temperature, "num_ctx": 32768, "num_predict": 8192},
             "messages": [
-                {"role": "system", "content": system or "You are a careful writing system assistant."},
+                {"role": "system", "content": system or DEFAULT_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
         }

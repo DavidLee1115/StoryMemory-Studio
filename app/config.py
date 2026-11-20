@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    audit_only_mode: bool = Field(default=True, alias="AUDIT_ONLY_MODE")
     db_path: Path = Field(default=Path("./data/storymemory.sqlite3"), alias="STORYMEMORY_DB_PATH")
     data_dir: Path = Field(default=Path("./data"), alias="STORYMEMORY_DATA_DIR")
     export_dir: Path = Field(default=Path("./exports"), alias="STORYMEMORY_EXPORT_DIR")

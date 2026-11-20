@@ -4,7 +4,13 @@ import importlib
 
 import streamlit as st
 
-from app.ui.navigation import NAVIGATION, PUBLIC_WITHOUT_PROJECT, module_path
+from app.ui.navigation import (
+    AUDIT_IMPORT_SECTION,
+    AUDIT_NAVIGATION,
+    NAVIGATION,
+    PUBLIC_WITHOUT_PROJECT,
+    module_path,
+)
 from app.ui.services import RESOURCE_ROOT, dashboard_snapshot, health_snapshot, list_projects
 
 
@@ -93,7 +99,9 @@ def _accent(section: str) -> str:
 
 def render_topbar(section: str | None = None, page: str | None = None) -> None:
     health = health_snapshot()
-    subtitle = f"{section} / {page}" if section and page else "本地优先的长篇 IP 创作中控台"
+    subtitle = section or "本地优先的长篇 IP 创作中控台"
+    if page and page != section:
+        subtitle = f"{subtitle} / {page}"
     st.markdown(
         f"""
         <div class="story-topbar">
@@ -108,12 +116,18 @@ def render_topbar(section: str | None = None, page: str | None = None) -> None:
     )
 
 
-def render_sidebar() -> tuple[str | None, str, str]:
+def render_sidebar(audit_only: bool = False) -> tuple[str | None, str, str]:
+    navigation = AUDIT_NAVIGATION if audit_only else NAVIGATION
+    description = (
+        "导入文稿、提取记忆、检查设定与时间线。"
+        if audit_only
+        else "结构化记忆、章节生成、质量优化和 IP 改编都在这里完成。"
+    )
     st.sidebar.markdown(
-        """
+        f"""
         <div class="story-sidebar-brand">
           <h2>长篇记忆小说</h2>
-          <p>结构化记忆、章节生成、质量优化和 IP 改编都在这里完成。</p>
+          <p>{description}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -127,28 +141,28 @@ def render_sidebar() -> tuple[str | None, str, str]:
         index = names.index(current) if current in names else 0
         project = st.sidebar.selectbox("当前项目", names, index=index, key="nav_project")
         st.session_state["project"] = project
-    else:
+    elif not audit_only:
         st.sidebar.info("还没有项目。请先从 0 创建小说，或进入项目管理导入已有作品。")
 
-    sections = list(NAVIGATION.keys())
-    default_section = st.session_state.get("nav_section", sections[0])
-    section = st.sidebar.radio(
-        "一级板块",
-        sections,
-        index=sections.index(default_section) if default_section in sections else 0,
-    )
-    st.session_state["nav_section"] = section
+    sections = list(navigation)
+    if st.session_state.get("nav_section") not in sections:
+        st.session_state["nav_section"] = sections[0]
+    section = st.sidebar.radio("一级板块", sections, key="nav_section")
 
-    info = NAVIGATION[section]
-    st.sidebar.caption(f'{info["icon"]} · {info["description"]}')
+    info = navigation[section]
+    st.sidebar.caption(info["description"] if audit_only else f'{info["icon"]} · {info["description"]}')
     page_names = list(info["pages"].keys())
-    default_page = st.session_state.get("nav_page", page_names[0])
-    if default_page not in page_names:
-        default_page = page_names[0]
-    page = st.sidebar.selectbox("子功能", page_names, index=page_names.index(default_page), key=f"sub_{section}")
+    default_page = "项目管理" if audit_only and section == AUDIT_IMPORT_SECTION and not project else page_names[0]
+    previous_page = st.session_state.get("nav_page")
+    if previous_page in page_names:
+        default_page = previous_page
+    page = default_page
+    if len(page_names) > 1:
+        page = st.sidebar.selectbox("子功能", page_names, index=page_names.index(default_page), key=f"sub_{section}")
     st.session_state["nav_page"] = page
-    st.sidebar.divider()
-    st.sidebar.caption("推荐顺序：启动创作 -> 建立记忆 -> 生成章节 -> 检查一致性 -> 优化质量 -> 改编分发")
+    if not audit_only:
+        st.sidebar.divider()
+        st.sidebar.caption("推荐顺序：启动创作 -> 建立记忆 -> 生成章节 -> 检查一致性 -> 优化质量 -> 改编分发")
     return project, section, page
 
 
@@ -233,10 +247,13 @@ def render_dashboard(project: str | None) -> None:
                     """,
                     unsafe_allow_html=True,
                 )
-                if st.button(f"进入{section}", key=f"go_{section}", use_container_width=True):
-                    st.session_state["nav_section"] = section
-                    st.session_state["nav_page"] = primary[0]
-                    st.rerun()
+                st.button(
+                    f"进入{section}",
+                    key=f"go_{section}",
+                    use_container_width=True,
+                    on_click=st.session_state.update,
+                    args=({"nav_section": section, "nav_page": primary[0], f"sub_{section}": primary[0]},),
+                )
 
     _render_workflow()
     _render_support_info()
@@ -307,12 +324,16 @@ def _render_support_info() -> None:
         st.markdown('<div class="story-support-caption">添加时建议备注：StoryMemory。欢迎反馈使用体验、模型适配问题和长篇创作需求。</div>', unsafe_allow_html=True)
 
 
-def render_selected_page(project: str | None, section: str, page: str) -> None:
+def render_selected_page(project: str | None, section: str, page: str, audit_only: bool = False) -> None:
+    navigation = AUDIT_NAVIGATION if audit_only else NAVIGATION
+    short_path = navigation[section]["pages"][page]
     render_topbar(section, page)
-    if not project and (section, page) not in PUBLIC_WITHOUT_PROJECT:
-        st.warning("请先创建或选择项目。你可以进入“创作启动 / 从 0 创建小说”或“项目管理”。")
+    if not project and short_path not in PUBLIC_WITHOUT_PROJECT:
+        if audit_only:
+            st.info(f"请在「{AUDIT_IMPORT_SECTION}」的「项目管理」中创建项目。")
+        else:
+            st.warning("请先创建或选择项目。你可以进入“创作启动 / 从 0 创建小说”或“项目管理”。")
         return
-    short_path = NAVIGATION[section]["pages"][page]
     try:
         module = importlib.import_module(module_path(short_path))
         module.render(project)

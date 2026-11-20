@@ -3,6 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from app.config import get_settings
 from app.llm.validation import validate_llm_connection
 from app.ui.components.result_panel import result_panel
 from app.ui.services import (
@@ -13,7 +14,8 @@ from app.ui.services import (
     suggested_data_dirs,
 )
 
-st.title("模型与数据设置")
+audit_only = get_settings().audit_only_mode
+st.title("模型与接口设置" if audit_only else "模型与数据设置")
 st.caption(f"配置文件：{ENV_PATH}")
 
 health = health_snapshot()
@@ -56,9 +58,10 @@ with data_cols[1]:
 
 st.divider()
 st.subheader("模型接入")
-st.caption(
-    "章节生成、记忆抽取、文风学习会优先使用这里的默认模型；页面中选择“自动识别”时，会按默认模型和可用密钥自动选择。"
-)
+if audit_only:
+    st.caption("记忆提取和一致性检查选择「自动识别」时，会按默认提供方和可用密钥选择模型。")
+else:
+    st.caption("章节生成、记忆抽取、文风学习会优先使用这里的默认模型；页面中选择“自动识别”时，会按默认模型和可用密钥自动选择。")
 
 provider_options = ["ollama", "deepseek", "glm", "openai_compatible", "openai"]
 current_provider = os.getenv("DEFAULT_MODEL_PROVIDER", os.getenv("STORYMEMORY_LLM_PROVIDER", "ollama"))
@@ -103,9 +106,22 @@ with st.expander("智谱 GLM / Z.ai", expanded=provider == "glm"):
     )
 
 with st.expander("OpenAI 兼容服务", expanded=provider == "openai_compatible"):
+    presets = (
+        ("OpenAI 官方", "https://api.openai.com/v1"),
+        ("本地 LM Studio", "http://localhost:1234/v1"),
+        ("本地 Ollama", "http://localhost:11434/v1"),
+    )
+    base_url_key = "settings_openai_compatible_base_url"
+    if base_url_key not in st.session_state:
+        st.session_state[base_url_key] = get_settings().openai_compatible_base_url
+    for col, (label, url) in zip(st.columns(len(presets)), presets):
+        if col.button(label):
+            st.session_state[base_url_key] = url
+
     compatible_key = st.text_input("OpenAI 兼容服务密钥", value=os.getenv("OPENAI_COMPATIBLE_API_KEY", ""), type="password")
-    compatible_base = st.text_input("OpenAI 兼容服务地址", value=os.getenv("OPENAI_COMPATIBLE_BASE_URL", "https://api.openai.com/v1"))
+    compatible_base = st.text_input("OpenAI 兼容服务地址", key=base_url_key)
     compatible_model = st.text_input("OpenAI 兼容模型名称", value=os.getenv("OPENAI_COMPATIBLE_MODEL", "gpt-4o-mini"))
+    st.caption("选用预设后，请填写服务所用的模型名称。若本地服务无需验证密钥，可在密钥栏填入 local。要作为默认模型，请选择「OpenAI 兼容服务」并保存。")
 
 with st.expander("OpenAI", expanded=provider == "openai"):
     openai_key = st.text_input("OpenAI 密钥", value=os.getenv("OPENAI_API_KEY", ""), type="password")

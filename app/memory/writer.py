@@ -342,6 +342,53 @@ def upsert_extraction(
     write_memory_chunks(conn, project_id, chapter_id, extraction)
 
 
+def replace_chapter_extraction(
+    conn: sqlite3.Connection, project_id: int, chapter_id: int, extraction: MemoryExtraction
+) -> None:
+    """Replace chapter-owned memory while keeping shared state from later chapters."""
+    chapter = conn.execute(
+        "SELECT chapter_number FROM chapters WHERE project_id = ? AND id = ?", (project_id, chapter_id)
+    ).fetchone()
+    if chapter is None:
+        raise ValueError("该章节不属于当前项目或已不存在")
+
+    shared_updates = {}
+    for field, table, chapter_column in (
+        ("characters", "characters", "last_seen_chapter_id"),
+        ("plot_threads", "plot_threads", "last_chapter_id"),
+        ("foreshadows", "foreshadows", "last_mentioned_chapter_id"),
+    ):
+        entities = getattr(extraction, field)
+        if not entities:
+            continue
+        newer_names = {
+            row["name"]
+            for row in conn.execute(
+                f"""
+                SELECT entity.name FROM {table} AS entity
+                JOIN chapters AS ch ON ch.id = entity.{chapter_column} AND ch.project_id = entity.project_id
+                WHERE entity.project_id = ? AND ch.chapter_number > ?
+                """,
+                (project_id, chapter["chapter_number"]),
+            )
+        }
+        shared_updates[field] = [
+            entity for entity in entities
+            if not isinstance(entity.get("name"), str) or entity["name"] not in newer_names
+        ]
+
+    for table, chapter_column in (
+        ("character_relationships", "chapter_id"),
+        ("world_rules", "chapter_id"),
+        ("timeline_events", "chapter_id"),
+        ("unresolved_questions", "first_chapter_id"),
+    ):
+        conn.execute(
+            f"DELETE FROM {table} WHERE project_id = ? AND {chapter_column} = ?", (project_id, chapter_id)
+        )
+    upsert_extraction(conn, project_id, chapter_id, extraction.model_copy(update=shared_updates))
+
+
 def write_memory_chunks(conn: sqlite3.Connection, project_id: int, chapter_id: int, extraction: MemoryExtraction) -> None:
     row = conn.execute("SELECT chapter_number FROM chapters WHERE id = ?", (chapter_id,)).fetchone()
     chapter_number = row["chapter_number"] if row else chapter_id

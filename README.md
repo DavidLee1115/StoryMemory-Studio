@@ -378,6 +378,8 @@ pip install -r requirements.txt
 python run_ui.py
 ```
 
+默认进入纯体检模式，侧边栏提供「文稿导入与记忆提取」「设定与时间线体检」「模型与接口设置」。在 `.env` 中设置 `AUDIT_ONLY_MODE=false` 并重启，可恢复完整导航。`python launcher.py` 同样读取此设置。
+
 Run tests:
 
 ```powershell

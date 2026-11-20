@@ -10,7 +10,7 @@ project = project_selector()
 if not project:
     st.stop()
 
-st.info("这里展示 AI 写作时会优先参考的长期记忆。可以搜索人物、地点、道具、伏笔、规则或章节事实。")
+st.info("可以按关键词搜索人物、地点、道具、伏笔、规则或章节事实。")
 
 search = st.text_input("搜索记忆", placeholder="输入人物名、地点、道具、伏笔、关键词")
 data = memory_dashboard(project, search)

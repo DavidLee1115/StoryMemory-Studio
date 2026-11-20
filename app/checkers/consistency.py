@@ -4,6 +4,7 @@ from pathlib import Path
 
 from app.db.models import ConsistencyReport
 from app.llm.client import LLMClient, extract_json, repair_json_with_llm
+from app.prompts import render_prompt
 
 PROMPT_PATH = Path(__file__).parents[1] / "prompts" / "consistency_check.md"
 
@@ -33,7 +34,7 @@ class ConsistencyChecker:
         if self.client is None:
             return heuristic_check(chapter_text)
         template = PROMPT_PATH.read_text(encoding="utf-8")
-        prompt = template.format(context=context_prompt, chapter_text=chapter_text, chapter_goal=chapter_goal)
+        prompt = render_prompt(template, context=context_prompt, chapter_text=chapter_text, chapter_goal=chapter_goal)
         raw = self.client.complete(prompt, temperature=0)
         try:
             data = extract_json(raw)

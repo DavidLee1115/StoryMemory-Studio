@@ -2,10 +2,12 @@ import streamlit as st
 
 from app.ui.components.project_selector import project_selector
 from app.ui.components.result_panel import result_panel
+from app.ui.components.ui_batch_panel import render_batch_panel
 from app.ui.services import (
     available_provider_options,
     import_chapter_batch,
     import_chapter_text,
+    project_id_for_name,
     read_uploaded_text,
     split_chapters_from_text,
 )
@@ -49,21 +51,22 @@ if mode == "单章导入":
         if not title:
             title = file.name.rsplit(".", 1)[0]
     content = st.text_area("章节正文", value=uploaded_text, height=360)
-    if st.button("导入章节并抽取记忆", type="primary", disabled=not content.strip()):
-        with st.spinner("正在导入章节并抽取长期记忆..."):
-            result = import_chapter_text(project, int(number), title or f"第 {int(number)} 章", content, volume, provider)
-        st.success("导入完成。")
-        tabs = st.tabs(["摘要", "人物", "章节事实", "伏笔", "时间线"])
-        with tabs[0]:
-            result_panel("章节摘要", result.get("summary", {}))
-        with tabs[1]:
-            result_panel("抽取人物", result.get("characters", []))
-        with tabs[2]:
-            result_panel("章节事实", result.get("facts", []))
-        with tabs[3]:
-            result_panel("伏笔", result.get("foreshadows", []))
-        with tabs[4]:
-            result_panel("时间线事件", result.get("timeline_events", []))
+    with st.container():
+        if st.button("导入章节并抽取记忆", type="primary", disabled=not content.strip()):
+            with st.spinner("正在导入章节并抽取长期记忆..."):
+                result = import_chapter_text(project, int(number), title or f"第 {int(number)} 章", content, volume, provider)
+            st.success("导入完成。")
+            tabs = st.tabs(["摘要", "人物", "章节事实", "伏笔", "时间线"])
+            with tabs[0]:
+                result_panel("章节摘要", result.get("summary", {}))
+            with tabs[1]:
+                result_panel("抽取人物", result.get("characters", []))
+            with tabs[2]:
+                result_panel("章节事实", result.get("facts", []))
+            with tabs[3]:
+                result_panel("伏笔", result.get("foreshadows", []))
+            with tabs[4]:
+                result_panel("时间线事件", result.get("timeline_events", []))
 else:
     start_number = st.number_input("起始章节编号", min_value=1, step=1)
     volume = st.text_input("卷名")
@@ -78,8 +81,11 @@ else:
     st.caption(f"预览拆分结果：{len(chapters)} 章")
     if chapters:
         st.dataframe([{"序号": i + int(start_number), "标题": c["title"], "字数": len(c["content"])} for i, c in enumerate(chapters)], use_container_width=True, hide_index=True)
-    if st.button("批量导入并抽取记忆", type="primary", disabled=not chapters):
-        with st.spinner("正在批量导入，章节较多时会需要一点时间..."):
-            results = import_chapter_batch(project, int(start_number), chapters, volume, provider)
-        st.success(f"已导入 {len(results)} 章。")
-        st.json(results[:5])
+    with st.container():
+        if st.button("批量导入并抽取记忆", type="primary", disabled=not chapters):
+            with st.spinner("正在批量导入，章节较多时会需要一点时间..."):
+                results = import_chapter_batch(project, int(start_number), chapters, volume, provider)
+            st.success(f"已导入 {len(results)} 章。")
+            st.json(results[:5])
+
+render_batch_panel(project_id_for_name(project))

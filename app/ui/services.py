@@ -43,6 +43,7 @@ from app.creative_center import (
     plan_payoff_for_foreshadow,
     recommend_payoff_for_project,
     rewrite_ai_tone_for_chapter,
+    save_quality_report,
 )
 
 ROOT = Path(os.environ.get("STORYMEMORY_RUNTIME_DIR", Path(__file__).parents[2])).expanduser().resolve()
@@ -497,7 +498,10 @@ def read_uploaded_text(filename: str, data: bytes) -> str:
 
 
 def split_chapters_from_text(text: str) -> list[dict[str, Any]]:
-    pattern = re.compile(r"(?m)^\s*(第[一二三四五六七八九十百千万零〇\d]+章[^\n\r]*|Chapter\s+\d+[^\n\r]*)\s*$")
+    pattern = re.compile(
+        r"(?m)^\s*(第[^\S\r\n]*[一二三四五六七八九十百千万零〇\d]+[^\S\r\n]*章[^\n\r]*"
+        r"|Chapter\s+\d+[^\n\r]*)\s*$"
+    )
     matches = list(pattern.finditer(text))
     if not matches:
         return [{"title": "导入章节", "content": text.strip()}] if text.strip() else []
@@ -850,13 +854,41 @@ def save_generated_chapter(project: str, number: int, title: str, content: str, 
     return import_chapter_text(project, number, title, content, volume, provider)
 
 
-def check_text(project: str, chapter_number: int, text: str, goal: str = "", provider: str = "none") -> dict[str, Any]:
+def check_text(
+    project: str,
+    chapter_number: int,
+    text: str,
+    goal: str = "",
+    provider: str = "none",
+    *,
+    chapter_id: int | None = None,
+) -> dict[str, Any]:
     provider = resolve_auto_provider(provider)
     with db_session() as conn:
         p = get_project(conn, project)
         context = ContextBuilder(conn, p).build(ContextRequest(project=project, chapter_number=chapter_number, chapter_goal=goal))
         client = None if provider == "none" else get_llm(provider)
-        return ConsistencyChecker(client).check(context, text, goal).model_dump()
+        report = ConsistencyChecker(client).check(context, text, goal)
+        chapter = conn.execute(
+            """
+            SELECT id FROM chapters
+            WHERE project_id = ? AND chapter_number = ? AND (id = ? OR content = ?)
+            """,
+            (p["id"], chapter_number, chapter_id, text),
+        ).fetchone()
+        risk_levels = {"low": 0, "medium": 1, "high": 2, "critical": 2}
+        risk_index = max((risk_levels[issue.severity] for issue in report.issues), default=0)
+        data = report.model_dump()
+        save_quality_report(
+            conn,
+            p["id"],
+            chapter["id"] if chapter else None,
+            "consistency",
+            100 if report.passed else 70,
+            ("low", "medium", "high")[risk_index],
+            {**data, "chapter_number": chapter_number},
+        )
+        return data
 
 
 def update_foreshadow(project: str, row_id: int, status: str, expected: int | None, resolution: str, risk_note: str) -> None:

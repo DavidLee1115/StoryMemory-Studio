@@ -64,10 +64,40 @@ NAVIGATION = {
 }
 
 
+AUDIT_IMPORT_SECTION = "文稿导入与记忆提取"
+
+AUDIT_NAVIGATION = {
+    AUDIT_IMPORT_SECTION: {
+        "icon": "Import",
+        "description": "导入已有文稿，提取人物、事实、伏笔和时间线。",
+        "pages": {
+            "章节导入": "creation.import_chapter",
+            "项目管理": "creation.project_manager",
+        },
+    },
+    "设定与时间线体检": {
+        "icon": "Check",
+        "description": "检查正文的一致性，查阅人物、设定、伏笔和时间线。",
+        "pages": {
+            "一致性检查": "consistency.consistency_checker",
+            "时间线管理": "consistency.timeline_manager",
+            "伏笔管理": "consistency.foreshadow_manager",
+            "人物与设定查询": "memory.memory_dashboard",
+        },
+    },
+    "模型与接口设置": {
+        "icon": "Settings",
+        "description": "配置模型提供方、接口地址和本地数据目录。",
+        "pages": {
+            "模型与接口设置": "writing.model_settings",
+        },
+    },
+}
+
 PUBLIC_WITHOUT_PROJECT = {
-    ("创作启动", "从 0 创建小说"),
-    ("创作启动", "项目管理"),
-    ("章节创作", "模型与数据设置"),
+    "creation.create_novel_wizard",
+    "creation.project_manager",
+    "writing.model_settings",
 }
 
 

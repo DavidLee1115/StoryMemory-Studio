@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>@@REPORT_TITLE@@</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+      --canvas: #f3f4f3;
+      --surface: #fff;
+      --text: #212826;
+      --muted: #57635e;
+      --border: #dce3df;
+      --control-border: #abbab2;
+      --hover: #edf2ef;
+      --accent: #17614c;
+      --selected: #e4f1eb;
+      --high: #9d292d;
+      --high-bg: #fbe6e5;
+      --medium: #754d0a;
+      --medium-bg: #faedce;
+      --low: #375970;
+      --low-bg: #e8eef3;
+      --mark-high: #fbd3ce;
+      --mark-medium: #f9e2a1;
+      --mark-low: #dce9f1;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --canvas: #151a19;
+      --surface: #1d2421;
+      --text: #ebf0ed;
+      --muted: #b0bdb6;
+      --border: #35413b;
+      --control-border: #64756b;
+      --hover: #29342e;
+      --accent: #98ddc0;
+      --selected: #263f36;
+      --high: #ffc0b9;
+      --high-bg: #522e2d;
+      --medium: #f5d994;
+      --medium-bg: #453719;
+      --low: #c1dbeb;
+      --low-bg: #2d3d49;
+      --mark-high: #572f2d;
+      --mark-medium: #4d3d1a;
+      --mark-low: #2a4050;
+    }
+    :root[data-theme="light"] { color-scheme: light; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 0;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--canvas);
+      color: var(--text);
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { text-wrap: balance; }
+    button, select, input { font: inherit; }
+    button, select {
+      color: inherit;
+      background: var(--surface);
+      border: 1px solid var(--control-border);
+      border-radius: 6px;
+    }
+    button { padding: 6px 10px; cursor: pointer; }
+    select { padding: 6px; }
+    button:hover, select:hover { background: var(--hover); }
+    button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .masthead {
+      display: grid;
+      grid-template-columns: minmax(12rem, 1fr) auto;
+      gap: 14px 24px;
+      align-items: center;
+      padding: 14px clamp(16px, 2.5vw, 36px);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .book { min-width: 0; }
+    .report-name { color: var(--accent); font-size: .83rem; font-weight: 700; }
+    .book h1 {
+      margin: 2px 0 3px;
+      font-size: clamp(20px, 2vw, 28px);
+      font-weight: 680;
+      overflow-wrap: anywhere;
+    }
+    .subtitle, .panel-meta { color: var(--muted); font-size: .85rem; }
+    .toolbar { display: grid; gap: 8px; justify-items: end; }
+    .stats, .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: center;
+    }
+    .stats strong { font-size: 1rem; margin-inline-end: 3px; }
+    .controls { color: var(--muted); font-size: .9rem; gap: 8px 14px; }
+    .control-label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .control-label input { inline-size: 1rem; block-size: 1rem; accent-color: var(--accent); }
+    .controls button, .controls select { color: var(--text); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-size: .82rem;
+      font-weight: 650;
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+    .high { --risk-ink: var(--high); --risk-bg: var(--high-bg); --highlight: var(--mark-high); }
+    .medium { --risk-ink: var(--medium); --risk-bg: var(--medium-bg); --highlight: var(--mark-medium); }
+    .low { --risk-ink: var(--low); --risk-bg: var(--low-bg); --highlight: var(--mark-low); }
+    .badge.high, .badge.medium, .badge.low { color: var(--risk-ink); background: var(--risk-bg); }
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(168px, 18fr) minmax(325px, 51fr) minmax(310px, 31fr);
+      gap: 1px;
+      background: var(--border);
+    }
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+    }
+    .panel-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-bar h2 { font-size: 1rem; font-weight: 700; }
+    .scroller { flex: 1; min-height: 0; overflow: auto; }
+    .scroller:focus-visible { outline-offset: -3px; }
+    .chapter-panel .scroller { position: relative; }
+    .chapter-list, .issue-list, .settings-list { list-style: none; padding: 0; margin: 0; }
+    .chapter-list { padding: 7px; }
+    .chapter-button {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: baseline;
+      gap: 8px;
+      width: 100%;
+      padding: 8px;
+      text-align: start;
+      border: 1px solid transparent;
+      background: transparent;
+    }
+    .chapter-button[aria-current="true"] {
+      color: var(--accent);
+      background: var(--selected);
+      font-weight: 700;
+    }
+    .chapter-no { color: var(--muted); font-size: .8rem; }
+    .chapter-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chapter-count {
+      align-self: center;
+      display: inline-grid;
+      min-width: 19px;
+      height: 19px;
+      padding: 0 3px;
+      place-items: center;
+      border-radius: 20px;
+      color: var(--risk-ink);
+      background: var(--risk-bg);
+      font-size: .72rem;
+      font-weight: 700;
+    }
+    .settings {
+      max-height: 45%;
+      overflow: auto;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .settings summary { padding: 10px 14px; cursor: pointer; font-weight: 650; }
+    .settings summary:hover { background: var(--hover); }
+    .settings summary:focus-visible { outline-offset: -3px; }
+    .settings-body { padding: 0 14px 12px; overflow-wrap: anywhere; }
+    .settings-body h3 { font-size: .86rem; color: var(--accent); margin: 9px 0 4px; }
+    .settings-list li { padding: 5px 0; line-height: 1.5; }
+    .settings-list p, .report-description { white-space: pre-wrap; }
+    .report-description { color: var(--muted); }
+    .reader { background: var(--canvas); }
+    .reader .panel-bar { background: var(--surface); }
+    .manuscript {
+      min-height: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: clamp(20px, 3.2vw, 48px) clamp(21px, 4vw, 56px);
+      background: var(--surface);
+    }
+    .chapter-title {
+      margin-bottom: 22px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: clamp(21px, 2.1vw, 28px);
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .prose {
+      font-family: "Songti SC", "Noto Serif CJK SC", "SimSun", "PingFang SC", serif;
+      font-size: 17px;
+      line-height: 1.95;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      text-wrap: pretty;
+    }
+    .prose mark {
+      position: relative;
+      color: inherit;
+      background: var(--highlight);
+      border-bottom: 2px solid var(--risk-ink);
+      border-radius: 2px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+      scroll-margin-block: 20px;
+    }
+    .prose mark.active-mark {
+      outline: 2px solid var(--risk-ink);
+      outline-offset: 2px;
+    }
+    .prose mark.flash { animation: locate-flash 1.5s ease-out; }
+    @keyframes locate-flash {
+      0%, 50% { opacity: .38; }
+      25%, 75%, 100% { opacity: 1; }
+    }
+    .conflicts { background: var(--canvas); }
+    .conflicts .panel-bar { background: var(--surface); }
+    .scope { display: inline-flex; align-items: center; gap: 5px; font-size: .83rem; }
+    .issue-list { display: grid; gap: 8px; padding: 10px; }
+    .issue-card {
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-inline-start: 3px solid var(--risk-ink);
+      border-radius: 7px;
+      background: var(--surface);
+    }
+    .issue-card[data-state="fixed"], .issue-card[data-state="ignored"] {
+      border-inline-start-color: var(--control-border);
+    }
+    .issue-card.current { border-color: var(--accent); }
+    .issue-head { display: flex; align-items: center; gap: 7px; }
+    .issue-head h3 { min-width: 0; font-size: 1rem; overflow-wrap: anywhere; }
+    .locate {
+      padding: 0;
+      border: 0;
+      border-radius: 2px;
+      background: transparent;
+      color: var(--accent);
+      text-align: start;
+      font-weight: inherit;
+    }
+    .locate:hover { text-decoration: underline; background: transparent; }
+    .issue-meta { margin-block: 5px 8px; overflow-wrap: anywhere; }
+    .issue-meta time { white-space: nowrap; }
+    .issue-detail {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding: 8px 9px;
+      background: var(--canvas);
+      border-radius: 5px;
+      font-size: .91rem;
+    }
+    .issue-detail div { min-width: 0; }
+    .issue-detail dt { color: var(--muted); font-size: .8rem; font-weight: 650; }
+    .issue-detail dd {
+      margin: 1px 0 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      text-wrap: pretty;
+    }
+    .issue-detail div + div { border-top: 1px solid var(--border); padding-top: 5px; }
+    .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .actions button { font-size: .84rem; }
+    .actions button[aria-pressed="true"] {
+      color: var(--accent);
+      background: var(--selected);
+      border-color: var(--accent);
+      font-weight: 650;
+    }
+    .state-label { font-size: .8rem; color: var(--muted); margin-inline-start: auto; }
+    .empty { padding: 16px 14px; color: var(--muted); font-size: .92rem; }
+    .storage-note { padding: 5px 14px; color: var(--medium); background: var(--medium-bg); }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (min-width: 1650px) {
+      .workspace { grid-template-columns: 260px minmax(325px, 1fr) minmax(380px, 30vw); }
+    }
+    @media (max-width: 830px) {
+      body { height: auto; }
+      .masthead { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+      .toolbar { justify-items: start; }
+      .workspace { grid-template-columns: minmax(0, 1fr); }
+      .chapter-panel .scroller { max-height: 185px; }
+      .reader .scroller { max-height: 64dvh; }
+      .settings { max-height: 260px; }
+      .manuscript { max-width: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .prose mark.flash { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="book">
+      <p class="report-name">单文件勘误报告</p>
+      <h1 id="book-title"></h1>
+      <p id="report-time" class="subtitle">尚无体检记录</p>
+    </div>
+    <div class="toolbar">
+      <div id="report-stats" class="stats" aria-label="全书冲突统计"></div>
+      <div class="controls">
+        <label class="control-label">筛选严重度
+          <select id="severity-filter">
+            <option value="all">全部</option>
+            <option value="high">高危</option>
+            <option value="medium">中危</option>
+            <option value="low">低危</option>
+          </select>
+        </label>
+        <label class="control-label"><input id="pending-only" type="checkbox"> 仅看未处理</label>
+        <button id="theme-toggle" type="button">暗色模式</button>
+      </div>
+    </div>
+  </header>
+  <p id="storage-note" class="storage-note" role="status" hidden>浏览器未开放本地存储，处理状态只在本次打开时有效。</p>
+  <div class="workspace">
+    <nav class="panel chapter-panel" aria-labelledby="chapters-heading">
+      <div class="panel-bar">
+        <h2 id="chapters-heading">章节导航</h2>
+        <span id="chapter-count" class="panel-meta"></span>
+      </div>
+      <div class="scroller">
+        <ul id="chapter-list" class="chapter-list"></ul>
+        <p id="chapters-empty" class="empty" hidden>暂无已入库章节。</p>
+      </div>
+      <details id="settings" class="settings">
+        <summary>关键设定</summary>
+        <div id="settings-body" class="settings-body"></div>
+      </details>
+    </nav>
+
+    <main class="panel reader" aria-labelledby="reader-heading">
+      <div class="panel-bar">
+        <h2 id="reader-heading">章节原文</h2>
+        <span id="match-count" class="panel-meta"></span>
+      </div>
+      <div id="reader-scroll" class="scroller" tabindex="0" role="region" aria-label="正文阅读区">
+        <article id="manuscript" class="manuscript">
+          <h3 id="chapter-title" class="chapter-title"></h3>
+          <div id="chapter-text" class="prose"></div>
+        </article>
+      </div>
+    </main>
+
+    <aside class="panel conflicts" aria-labelledby="issues-heading">
+      <div class="panel-bar">
+        <h2 id="issues-heading" tabindex="-1">冲突详情 <span id="issue-count" class="panel-meta"></span></h2>
+        <label class="scope">范围
+          <select id="issue-scope">
+            <option value="chapter">本章</option>
+            <option value="book">全书</option>
+          </select>
+        </label>
+      </div>
+      <div id="issues-scroll" class="scroller">
+        <ul id="issue-list" class="issue-list"></ul>
+        <p id="issues-empty" class="empty" hidden></p>
+      </div>
+    </aside>
+  </div>
+  <p id="announcement" class="sr-only" role="status"></p>
+  <noscript><p class="empty">请启用浏览器的 JavaScript 以查看正文和勘误。</p></noscript>
+  <script id="report-data" type="application/json">@@ERRATA_DATA@@</script>
+  <script>
+    "use strict";
+
+    const report = JSON.parse(document.getElementById("report-data").textContent);
+    const levels = {high: "高危", medium: "中危", low: "低危"};
+    const ranks = {high: 0, medium: 1, low: 2};
+    const states = {pending: "未处理", fixed: "已修", ignored: "已忽略"};
+    const checkDate = new Intl.DateTimeFormat("zh-CN", {
+      dateStyle: "medium", timeStyle: "short", hourCycle: "h23"
+    });
+    const checkDay = new Intl.DateTimeFormat("zh-CN", {dateStyle: "medium"});
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+    const chapters = new Map(report.chapters.map(chapter => [chapter.id, chapter]));
+    const byChapter = new Map(report.chapters.map(chapter => [chapter.id, []]));
+    const issues = report.issues.slice().sort((a, b) => ranks[a.severity] - ranks[b.severity]);
+    for (const issue of issues) byChapter.get(issue.chapter_id)?.push(issue);
+
+    const $ = id => document.getElementById(id);
+    const storageKey = "storymemory.errata.v1:" + JSON.stringify([
+      report.project.title, report.project.name, report.project.id
+    ]);
+    const severityFilter = $("severity-filter");
+    const pendingOnly = $("pending-only");
+    const scope = $("issue-scope");
+    const issueList = $("issue-list");
+    const reader = $("reader-scroll");
+    const themeButton = $("theme-toggle");
+    const chapterButtons = new Map();
+    const issuesById = new Map(issues.map(issue => [issue.id, issue]));
+    const renderedCards = new Map();
+    const firstAffected = report.chapters.find(chapter => byChapter.get(chapter.id).length);
+    let chapterId = firstAffected?.id ?? report.chapters[0]?.id ?? null;
+    let selectedIssue = null;
+    let locatedMark = null;
+    let marks = new Map();
+    let savedStates = readStates();
+
+    function make(tag, className, value) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (value !== undefined) node.textContent = value;
+      return node;
+    }
+
+    function storageFailed() {
+      $("storage-note").hidden = false;
+    }
+
+    function readStates() {
+      try {
+        return new Map(Object.entries(JSON.parse(localStorage.getItem(storageKey) || "{}")));
+      } catch {
+        storageFailed();
+        return new Map();
+      }
+    }
+
+    function savedStatus(id) {
+      const state = savedStates.get(id);
+      return Object.hasOwn(states, state) ? state : issuesById.get(id).initial_status;
+    }
+
+    function announce(message) {
+      $("announcement").textContent = message;
+    }
+
+    function updateTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      themeButton.textContent = theme === "dark" ? "浅色模式" : "暗色模式";
+    }
+
+    const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    let storedTheme;
+    try {
+      storedTheme = localStorage.getItem("storymemory.errata.theme");
+    } catch {
+      storageFailed();
+    }
+    updateTheme(storedTheme === "dark" || storedTheme === "light" ? storedTheme : systemTheme);
+    themeButton.addEventListener("click", () => {
+      const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      updateTheme(theme);
+      try {
+        localStorage.setItem("storymemory.errata.theme", theme);
+      } catch {
+        storageFailed();
+      }
+    });
+
+    function timestamp(value) {
+      if (!value) return null;
+      const dayOnly = value.length === 10;
+      const date = new Date(dayOnly ? value + "T00:00:00" : value);
+      if (!Number.isFinite(date.getTime())) return null;
+      const time = make("time", "", (dayOnly ? checkDay : checkDate).format(date));
+      time.dateTime = value;
+      return time;
+    }
+
+    function buildHeader() {
+      $("book-title").textContent = report.project.title || report.project.name;
+      const time = timestamp(report.checked_at);
+      if (time) $("report-time").replaceChildren("最近体检 ", time);
+      const counts = {high: 0, medium: 0, low: 0};
+      for (const issue of issues) counts[issue.severity] += 1;
+      const stats = $("report-stats");
+      const archived = issues.some(issue => issue.initial_status !== "pending");
+      stats.append(make("strong", "", `${archived ? "体检记录" : "冲突"} ${issues.length} 条`));
+      for (const [severity, label] of Object.entries(levels)) {
+        stats.append(make("span", `badge ${severity}`, `${label} ${counts[severity]}`));
+      }
+    }
+
+    function chapterTitle(chapter) {
+      return chapter.title || `第 ${chapter.chapter_number} 章`;
+    }
+
+    function buildChapters() {
+      $("chapter-count").textContent = `${chapters.size} 章`;
+      $("chapters-empty").hidden = chapters.size > 0;
+      const fragment = document.createDocumentFragment();
+      for (const chapter of report.chapters) {
+        const li = make("li");
+        const title = chapterTitle(chapter);
+        const button = make("button", "chapter-button");
+        button.type = "button";
+        button.title = title;
+        button.append(
+          make("span", "chapter-no", String(chapter.chapter_number)),
+          make("span", "chapter-name", title)
+        );
+        const chapterIssues = byChapter.get(chapter.id);
+        if (chapterIssues.length) {
+          const color = chapterIssues[0].severity === "high" ? "high" : "medium";
+          const count = make("span", `chapter-count ${color}`, String(chapterIssues.length));
+          count.setAttribute("aria-hidden", "true");
+          button.append(count, make("span", "sr-only", `${chapterIssues.length} 条冲突`));
+        }
+        button.addEventListener("click", () => {
+          if (chapterId !== chapter.id) {
+            setChapter(chapter.id);
+            if (scope.value === "chapter") $("issues-scroll").scrollTop = 0;
+            renderIssues();
+          }
+        });
+        chapterButtons.set(chapter.id, button);
+        li.append(button);
+        fragment.append(li);
+      }
+      $("chapter-list").append(fragment);
+    }
+
+    $("settings").addEventListener("toggle", function showSettings() {
+      if (!$("settings").open) return;
+      $("settings").removeEventListener("toggle", showSettings);
+      const body = $("settings-body");
+      if (report.project.description) {
+        body.append(make("p", "report-description", report.project.description));
+      }
+      for (const group of report.settings) {
+        const list = make("ul", "settings-list");
+        for (const entry of group.entries) {
+          const item = make("li");
+          if (entry.title) item.append(make("strong", "", entry.title));
+          if (entry.text) item.append(make("p", "", entry.text));
+          if (entry.source) item.append(make("p", "panel-meta", entry.source));
+          list.append(item);
+        }
+        body.append(make("h3", "", group.label), list);
+      }
+      if (!body.childNodes.length) body.append(make("p", "panel-meta", "暂无已入库设定。"));
+    });
+
+    function excerpts(source) {
+      const quote = source.trim();
+      if (!quote) return [];
+      const pairs = new Map([["“", "”"], ["‘", "’"], ["「", "」"], ["『", "』"], ['"', '"'], ["'", "'"]]);
+      if (pairs.get(quote[0]) === quote.at(-1)) {
+        const unwrapped = quote.slice(1, -1).trim();
+        if (unwrapped) return [quote, unwrapped];
+      }
+      return [quote];
+    }
+
+    function rangesFor(chapter, chapterIssues) {
+      const source = chapter.content;
+      const ranges = [];
+      let compact;
+      let offsets;
+      function matchRanges(text, quote, issue, positions) {
+        let index = text.indexOf(quote);
+        while (index >= 0) {
+          const end = index + quote.length;
+          ranges.push({
+            start: positions ? positions[index] : index,
+            end: positions ? positions[end - 1] + 1 : end,
+            issue
+          });
+          index = text.indexOf(quote, end);
+        }
+      }
+
+      for (const issue of chapterIssues) {
+        const candidates = excerpts(issue.source_text);
+        const exact = candidates.find(quote => source.includes(quote));
+        if (exact) {
+          matchRanges(source, exact, issue);
+          continue;
+        }
+        if (!candidates.length) continue;
+        if (!offsets) {
+          const parts = [];
+          offsets = [];
+          for (let index = 0; index < source.length; index++) {
+            if (/\s/.test(source[index])) continue;
+            offsets.push(index);
+            parts.push(source[index]);
+          }
+          compact = parts.join("");
+        }
+        const fallback = candidates.map(quote => quote.replace(/\s/g, "")).find(
+          quote => quote && compact.includes(quote)
+        );
+        if (fallback) matchRanges(compact, fallback, issue, offsets);
+      }
+      return ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+    }
+
+    function showManuscript(chapter) {
+      const title = $("chapter-title");
+      const prose = $("chapter-text");
+      locatedMark = null;
+      marks = new Map();
+      prose.replaceChildren();
+      reader.scrollTop = 0;
+      if (!chapter) {
+        title.textContent = "暂无章节原文";
+        prose.textContent = "这里会显示已入库的章节正文。";
+        $("match-count").textContent = "";
+        return;
+      }
+      title.textContent = chapterTitle(chapter);
+      const chapterIssues = byChapter.get(chapter.id);
+      const groups = [];
+      for (const range of rangesFor(chapter, chapterIssues)) {
+        const last = groups.at(-1);
+        if (last && range.start < last.end) {
+          last.end = Math.max(last.end, range.end);
+          last.ids.add(range.issue.id);
+          if (ranks[range.issue.severity] < ranks[last.severity]) last.severity = range.issue.severity;
+        } else {
+          groups.push({
+            start: range.start, end: range.end,
+            ids: new Set([range.issue.id]), severity: range.issue.severity
+          });
+        }
+      }
+
+      const fragment = document.createDocumentFragment();
+      let cursor = 0;
+      for (const group of groups) {
+        fragment.append(chapter.content.slice(cursor, group.start));
+        const mark = make("mark", group.severity, chapter.content.slice(group.start, group.end));
+        mark.tabIndex = -1;
+        fragment.append(mark);
+        for (const id of group.ids) if (!marks.has(id)) marks.set(id, mark);
+        cursor = group.end;
+      }
+      fragment.append(chapter.content.slice(cursor));
+      prose.append(fragment);
+      $("match-count").textContent = chapterIssues.length
+        ? `已定位 ${marks.size} / ${chapterIssues.length} 条`
+        : "";
+    }
+
+    function setChapter(id) {
+      chapterButtons.get(chapterId)?.removeAttribute("aria-current");
+      chapterId = id;
+      selectedIssue = null;
+      chapterButtons.get(id)?.setAttribute("aria-current", "true");
+      showManuscript(chapters.get(id));
+    }
+
+    function focusIssue(id) {
+      const issue = issuesById.get(id);
+      if (!issue || !chapters.has(issue.chapter_id)) return;
+      if (chapterId !== issue.chapter_id) {
+        setChapter(issue.chapter_id);
+        selectedIssue = id;
+        renderIssues();
+      } else {
+        renderedCards.get(selectedIssue)?.firstElementChild.classList.remove("current");
+        selectedIssue = id;
+        renderedCards.get(id)?.firstElementChild.classList.add("current");
+      }
+
+      locatedMark?.classList.remove("active-mark", "flash");
+      locatedMark = marks.get(id);
+      if (!locatedMark) {
+        $("chapter-title").scrollIntoView({block: "start", behavior: reducedMotion.matches ? "instant" : "smooth"});
+        $("reader-scroll").focus({preventScroll: true});
+        announce("已打开章节。当前正文中未找到摘录。");
+        return;
+      }
+      locatedMark.classList.add("active-mark");
+      // Commit the class removal so clicking the same card replays the animation.
+      void locatedMark.offsetWidth;
+      locatedMark.classList.add("flash");
+      locatedMark.scrollIntoView({
+        behavior: reducedMotion.matches ? "instant" : "smooth", block: "center", inline: "nearest"
+      });
+      locatedMark.focus({preventScroll: true});
+      announce("已定位原文摘录。");
+    }
+
+    function storeStatus(id, next) {
+      const state = savedStatus(id) === next ? "pending" : next;
+      const isInitial = state === issuesById.get(id).initial_status;
+      if (isInitial) savedStates.delete(id);
+      else savedStates.set(id, state);
+      try {
+        const latest = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        const merged = new Map(Object.entries(latest));
+        if (isInitial) merged.delete(id);
+        else merged.set(id, state);
+        localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(merged)));
+        savedStates = merged;
+      } catch {
+        storageFailed();
+      }
+      if (pendingOnly.checked) {
+        renderIssues();
+        $("issues-heading").focus({preventScroll: true});
+      } else {
+        const {li, nextFocus} = makeCard(issuesById.get(id), next);
+        renderedCards.get(id).replaceWith(li);
+        renderedCards.set(id, li);
+        nextFocus.focus({preventScroll: true});
+      }
+      announce(`处理状态已更新为${states[state]}。`);
+    }
+
+    function addDetail(list, label, value) {
+      const row = make("div");
+      row.append(make("dt", "", label), make("dd", "", value || "未提供"));
+      list.append(row);
+    }
+
+    function issueLocation(issue, chapter) {
+      if (chapter) {
+        const number = `第 ${chapter.chapter_number} 章`;
+        if (chapter.id !== chapterId) return `${number} · ${chapterTitle(chapter)} · 点击查看原文`;
+        if (marks.has(issue.id)) return `${number} · 点击定位原文`;
+        return issue.source_text.trim()
+          ? `${number} · 当前正文未匹配摘录`
+          : `${number} · 无原文摘录`;
+      }
+      return issue.chapter_number == null
+        ? "未关联入库章节"
+        : `第 ${issue.chapter_number} 章 · 未关联入库正文`;
+    }
+
+    function makeCard(issue, focusAction) {
+      const chapter = chapters.get(issue.chapter_id);
+      const state = savedStatus(issue.id);
+      const li = make("li");
+      const card = make("article", `issue-card ${issue.severity}`);
+      card.dataset.state = state;
+      if (issue.id === selectedIssue) card.classList.add("current");
+      const head = make("div", "issue-head");
+      const heading = make("h3");
+      if (chapter) {
+        const locate = make("button", "locate", issue.issue_type || "一致性问题");
+        locate.type = "button";
+        locate.title = "定位或查看章节原文";
+        locate.addEventListener("click", () => focusIssue(issue.id));
+        card.addEventListener("click", event => {
+          if (!event.target.closest("button") && !window.getSelection()?.toString()) focusIssue(issue.id);
+        });
+        heading.append(locate);
+      } else {
+        heading.textContent = issue.issue_type || "一致性问题";
+      }
+      head.append(make("span", `badge ${issue.severity}`, levels[issue.severity]), heading);
+      const meta = make("p", "issue-meta panel-meta", issueLocation(issue, chapter));
+      const time = timestamp(issue.checked_at);
+      if (time) meta.append(" · ", time);
+      const details = make("dl", "issue-detail");
+      addDetail(details, "前文设定 / 检查依据", issue.evidence);
+      if (issue.historical_excerpt) addDetail(details, "历史审计原句", issue.historical_excerpt);
+      const historical = issue.initial_status !== "pending";
+      addDetail(details, historical ? "当前稿定位原句" : "当前矛盾点 / 原句摘录", issue.source_text);
+      addDetail(details, historical ? "原记录处理结论" : "修改建议", issue.suggestion);
+      const actions = make("div", "actions");
+      let nextFocus;
+      for (const [value, label] of [["fixed", "标记已修"], ["ignored", "误报忽略"]]) {
+        const button = make("button", "", label);
+        button.type = "button";
+        button.setAttribute("aria-pressed", String(state === value));
+        button.title = state === value ? "再次点击可恢复为未处理" : label;
+        button.addEventListener("click", () => storeStatus(issue.id, value));
+        actions.append(button);
+        if (focusAction === value) nextFocus = button;
+      }
+      actions.append(make("span", "state-label", states[state]));
+      card.append(head, meta, details, actions);
+      li.append(card);
+      return {li, nextFocus};
+    }
+
+    function renderIssues() {
+      const pool = scope.value === "book" ? issues : byChapter.get(chapterId) || [];
+      const visible = pool.filter(issue =>
+        (severityFilter.value === "all" || issue.severity === severityFilter.value) &&
+        (!pendingOnly.checked || savedStatus(issue.id) === "pending")
+      );
+      $("issue-count").textContent = `${visible.length} 条`;
+      const empty = $("issues-empty");
+      empty.hidden = visible.length > 0;
+      if (!empty.hidden) {
+        empty.textContent = pool.length
+          ? "当前筛选下没有冲突。"
+          : scope.value === "book" ? "全书暂无已记录的冲突。" : "本章暂无已记录的冲突。";
+      }
+      const fragment = document.createDocumentFragment();
+      renderedCards.clear();
+      for (const issue of visible) {
+        const {li} = makeCard(issue);
+        fragment.append(li);
+        renderedCards.set(issue.id, li);
+      }
+      issueList.replaceChildren(fragment);
+    }
+
+    function filtersChanged() {
+      $("issues-scroll").scrollTop = 0;
+      renderIssues();
+      announce(`显示 ${$("issue-count").textContent}冲突。`);
+    }
+
+    severityFilter.addEventListener("change", filtersChanged);
+    pendingOnly.addEventListener("change", filtersChanged);
+    scope.addEventListener("change", filtersChanged);
+    window.addEventListener("storage", event => {
+      if (event.key === storageKey) {
+        savedStates = readStates();
+        renderIssues();
+      }
+    });
+
+    buildHeader();
+    buildChapters();
+    if (issues.some(issue => !chapters.has(issue.chapter_id))) scope.options[1].textContent = "全书（含未关联）";
+    if (!firstAffected && (issues.length || !chapters.size)) scope.value = "book";
+    setChapter(chapterId);
+    if (firstAffected) {
+      const button = chapterButtons.get(chapterId);
+      const listViewport = $("chapter-list").parentElement;
+      if (button.offsetTop + button.offsetHeight > listViewport.clientHeight) {
+        listViewport.scrollTop = button.offsetTop - listViewport.clientHeight / 2;
+      }
+    }
+    renderIssues();
+  </script>
+</body>
+</html>

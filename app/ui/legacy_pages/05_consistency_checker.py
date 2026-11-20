@@ -1,14 +1,16 @@
 import streamlit as st
 
 from app.ui.components.project_selector import project_selector
-from app.ui.services import available_provider_options, chapter_options, check_text
+from app.ui.components.ui_html_export import render_html_export_button
+from app.ui.services import available_provider_options, chapter_options, check_text, project_id_for_name
 
 st.title("一致性检查")
 project = project_selector()
 if not project:
     st.stop()
+project_id = project_id_for_name(project)
 
-st.info("生成后先检查再入库。系统会重点看人物性格、已知信息、时间线、道具状态、伏笔和 AI 腔表达。")
+st.info("检查正文中的人物性格、已知信息、时间线、道具状态、伏笔和 AI 腔表达。")
 
 chapters = chapter_options(project)
 source = st.radio("章节来源", ["粘贴文本", "选择已有章节"], horizontal=True)
@@ -29,20 +31,30 @@ provider = st.selectbox(
 )
 
 text = ""
+selected_chapter_id = None
 if source == "选择已有章节" and chapters:
     labels = [f"{c['chapter_number']} - {c['title']}" for c in chapters]
     selected = st.selectbox("选择章节", labels)
     item = chapters[labels.index(selected)]
     chapter_number = item["chapter_number"]
+    selected_chapter_id = item["id"]
     text = st.text_area("章节正文", item["content"], height=360)
 else:
     text = st.text_area("粘贴待检查章节", height=360)
 
+report_key = f"consistency_report_{project_id}"
 if st.button("检查穿帮", type="primary", disabled=not text.strip()):
     with st.spinner("正在检查一致性..."):
-        report = check_text(project, int(chapter_number), text, goal, provider)
+        report = check_text(project, int(chapter_number), text, goal, provider, chapter_id=selected_chapter_id)
+        st.session_state[report_key] = (chapter_number, report)
+
+if report_key in st.session_state:
+    checked_chapter, report = st.session_state[report_key]
+    st.caption(f"本次会话最近检查 · 第 {checked_chapter} 章")
     if report.get("passed"):
         st.success("未发现严重问题。")
     else:
         st.error("发现需要处理的问题。")
     st.json(report)
+
+render_html_export_button(project_id)
